@@ -7,16 +7,16 @@
 
 '''
 
-
 import requests
 import socket
 import time
 import math
 import hmac
 import hashlib
-import getpass
 import json
 import urllib3
+import os
+import base64
 
 urllib3.disable_warnings()
 
@@ -28,9 +28,11 @@ def get_jsonp(url, params):
     About jsonp: https://stackoverflow.com/questions/2067472/what-is-jsonp-and-why-was-it-created
     """
     headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/76.0.3809.100 Chrome/76.0.3809.100 Safari/537.36",
+        "User-Agent":
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/76.0.3809.100 Chrome/76.0.3809.100 Safari/537.36",
     }
-    callback_name = "jQuery112406951885120277062_" + str(int(time.time() * 1000))
+    callback_name = "jQuery112406951885120277062_" + str(
+        int(time.time() * 1000))
     params['callback'] = callback_name
     resp = requests.get(url, params=params, headers=headers, verify=False)
     return json.loads(resp.text[len(callback_name) + 1:-1])
@@ -164,7 +166,8 @@ def get_base64(s):
     if len(s) == 0:
         return s
     for i in range(0, imax, 3):
-        b10 = (_getbyte(s, i) << 16) | (_getbyte(s, i + 1) << 8) | _getbyte(s, i + 2)
+        b10 = (_getbyte(s, i) << 16) | (_getbyte(s, i + 1) << 8) | _getbyte(
+            s, i + 2)
         x.append(_ALPHA[(b10 >> 18)])
         x.append(_ALPHA[((b10 >> 12) & 63)])
         x.append(_ALPHA[((b10 >> 6) & 63)])
@@ -172,11 +175,12 @@ def get_base64(s):
     i = imax
     if len(s) - imax == 1:
         b10 = _getbyte(s, i) << 16
-        x.append(_ALPHA[(b10 >> 18)] +
-                 _ALPHA[((b10 >> 12) & 63)] + _PADCHAR + _PADCHAR)
+        x.append(_ALPHA[(b10 >> 18)] + _ALPHA[((b10 >> 12) & 63)] + _PADCHAR +
+                 _PADCHAR)
     elif len(s) - imax == 2:
         b10 = (_getbyte(s, i) << 16) | (_getbyte(s, i + 1) << 8)
-        x.append(_ALPHA[(b10 >> 18)] + _ALPHA[((b10 >> 12) & 63)] + _ALPHA[((b10 >> 6) & 63)] + _PADCHAR)
+        x.append(_ALPHA[(b10 >> 18)] + _ALPHA[((b10 >> 12) & 63)] +
+                 _ALPHA[((b10 >> 6) & 63)] + _PADCHAR)
     return "".join(x)
 
 
@@ -188,13 +192,12 @@ def get_sha1(value):
     return hashlib.sha1(value.encode()).hexdigest()
 
 
-def login(username, password):
+def login(username, password, retry=0):
+    print(f"Try login with retry = {retry}")
     srun_portal_url = "https://gw.buaa.edu.cn/cgi-bin/srun_portal"
     ip, token = get_ip_token(username)
     info = get_info(username, password, ip)
 
-    # import IPython
-    # IPython.embed()
     data = {
         "action": "login",
         "username": username,
@@ -218,15 +221,42 @@ def login(username, password):
     chkstr += token + "{SRBX1}" + get_base64(get_xencode(info, token))
     data['chksum'] = get_sha1(chkstr)
 
-    return get_jsonp(srun_portal_url, data)
+    login_state = get_jsonp(srun_portal_url, data)["res"]
+    if login_state == "ok":
+        return "login sucessful"
+    elif login_state == "login_error":
+        if retry > 0:
+            return login(username, password, retry - 1)
+        elif retry == -1:
+            return login(username, password, retry)
+        else:
+            return "login error"
+    else:
+        return f"unkonw state: {login_state}"
 
 
-if __name__ == "__main__":
-    print('gw.buaa.edu.cn portal login...')
-    username = input('username: ')
-    password = getpass.getpass('password: ')
+def check_is_login():  # check if your is login
+    url = "www.baidu.com"
+    # data = requests.get(url)
+    os.system(f"curl {url} > cache.txt")  # 能访问就是成功，不然就是没登陆
+    with open("cache.txt", "r") as f:
+        login_state = f.read().find("gw.buaa.edu.cn")
+    os.remove("cache.txt")
+    if login_state == -1:
+        return True
+    else:
+        return False
 
-    login_info = login(username, password)
-    print(json.dumps(login_info, indent=4, ensure_ascii=False))
+
+def pwd_decoder(pwd):
+    return str(base64.b64decode(pwd), "utf-8")
 
 
+def auto_login(username, password):
+    print('check gw.buaa.edu.cn portal login state...')
+    if check_is_login():
+        print("Already login!")
+    else:
+        print("Not login, auto login start...")
+        login_msg = login(username, password, retry=3)
+        print(login_msg)
