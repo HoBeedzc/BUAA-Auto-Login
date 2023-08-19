@@ -17,6 +17,7 @@ import json
 import urllib3
 import os
 import base64
+from datetime import datetime, timedelta
 
 urllib3.disable_warnings()
 
@@ -252,11 +253,28 @@ def pwd_decoder(pwd):
     return str(base64.b64decode(pwd), "utf-8")
 
 
-def auto_login(username, password):
-    print('check gw.buaa.edu.cn portal login state...')
+def login_once(username, password, logger):
+    logger.info('check gw.buaa.edu.cn portal login state...')
     if check_is_login():
-        print("Already login!")
+        logger.info("Already login!")
     else:
-        print("Not login, auto login start...")
+        logger.info("Not login, auto login start...")
         login_msg = login(username, password, retry=3)
-        print(login_msg)
+        logger.info(login_msg)
+
+def auto_login(username, password, logger):
+    while True:
+        logger.info('Checking gw.buaa.edu.cn portal login state...')
+        if check_is_login():
+            logger.info("Already logged in !")
+        else:
+            logger.info("Not logged in, starting auto login...")
+            login_msg = login(username, password, retry=3)
+            logger.info(login_msg)
+        
+        # 计算下一次检查的时间
+        next_check_time = datetime.now() + timedelta(minutes=30)
+        logger.info(f"Next check will be at: {next_check_time}")
+        
+        # 等待到达下一次检查时间
+        time.sleep((next_check_time - datetime.now()).seconds)
