@@ -260,12 +260,12 @@ def check_is_login(logger) -> bool:
         logger.warning(
             "Please make sure your terminal connection is established.")
         return False  # 无法验证是否成功登陆，因此返回 Flase
-    elif login_state == -1 and internet_state == 0:
+    elif login_state == -1 and internet_state >= 0:
         logger.info("Already login.")
         if global_login_state == -1:
             logger.warning("Could not reach google.com")
         else:
-            logger.warning(
+            logger.info(
                 "Congratulations! You have successfully reached real internet."
             )
         return True
@@ -273,7 +273,10 @@ def check_is_login(logger) -> bool:
         logger.info("Not logged in.")
         return False
     else:
-        logger.error("Other error occurred with login state %s" % login_state)
+        logger.error(f"Other error occurred with "
+                     f"login state {login_state}, "
+                     f"internet state {internet_state}, "
+                     f"and global internet state {global_login_state}. ")
         return False
 
 
