@@ -236,16 +236,44 @@ def login(username, password, retry=0):
         return f"unkonw state: {login_state}"
 
 
-def check_is_login():  # check if your is login
-    url = "www.baidu.com"
-    # data = requests.get(url)
-    os.system(f"curl {url} > cache.txt")  # 能访问就是成功，不然就是没登陆
+def check_is_login(logger) -> bool:
+    """
+    Check if you are logged in. And if you can reach the real internet.
+    Returns True if you are logged in and False otherwise.
+    """
+    url = "baidu.com"
+    global_url = "google.com"
+    os.system(f"curl {url} > cache.txt")
     with open("cache.txt", "r") as f:
-        login_state = f.read().find("gw.buaa.edu.cn")
+        ctx = f.read()
+        login_state = ctx.find("gw.buaa.edu.cn")
+        internet_state = ctx.find("baidu.com")
     os.remove("cache.txt")
-    if login_state == -1:
+
+    # check if you can reach the real internet
+    os.system(f"curl {global_url} > cache.txt")
+    with open("cache.txt", "r") as f:
+        global_login_state = f.read().find("www.google.com")
+    os.remove("cache.txt")
+
+    if login_state == -1 and internet_state == -1:
+        logger.warning(
+            "Please make sure your terminal connection is established.")
+        return False  # 无法验证是否成功登陆，因此返回 Flase
+    elif login_state == -1 and internet_state == 0:
+        logger.info("Already login.")
+        if global_login_state == -1:
+            logger.warning("Could not reach google.com")
+        else:
+            logger.warning(
+                "Congratulations! You have successfully reached real internet."
+            )
         return True
+    elif login_state == 0:
+        logger.info("Not logged in.")
+        return False
     else:
+        logger.error("Other error occurred with login state %s" % login_state)
         return False
 
 
@@ -255,26 +283,25 @@ def pwd_decoder(pwd):
 
 def login_once(username, password, logger):
     logger.info('check gw.buaa.edu.cn portal login state...')
-    if check_is_login():
-        logger.info("Already login!")
-    else:
-        logger.info("Not login, auto login start...")
+    if not check_is_login(logger=logger):
+        logger.info(
+            f"Not logged in, starting auto login with user {username} ...")
         login_msg = login(username, password, retry=3)
         logger.info(login_msg)
+
 
 def auto_login(username, password, logger):
     while True:
         logger.info('Checking gw.buaa.edu.cn portal login state...')
-        if check_is_login():
-            logger.info("Already logged in !")
-        else:
-            logger.info("Not logged in, starting auto login...")
+        if not check_is_login(logger=logger):
+            logger.info(
+                f"Not logged in, starting auto login with user {username} ...")
             login_msg = login(username, password, retry=3)
             logger.info(login_msg)
-        
+
         # 计算下一次检查的时间
         next_check_time = datetime.now() + timedelta(minutes=30)
         logger.info(f"Next check will be at: {next_check_time}")
-        
+
         # 等待到达下一次检查时间
         time.sleep((next_check_time - datetime.now()).seconds)
