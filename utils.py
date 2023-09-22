@@ -243,6 +243,8 @@ def check_is_login(logger) -> bool:
     """
     url = "baidu.com"
     global_url = "google.com"
+
+    logger.info(f"Checking login state with {url} ...")
     os.system(f"curl {url} > cache.txt")
     with open("cache.txt", "r") as f:
         ctx = f.read()
@@ -251,25 +253,23 @@ def check_is_login(logger) -> bool:
     os.remove("cache.txt")
 
     # check if you can reach the real internet
+    logger.info(f"Checking real internet state with {global_url} ...")
     os.system(f"curl {global_url} > cache.txt")
     with open("cache.txt", "r") as f:
         global_login_state = f.read().find("www.google.com")
     os.remove("cache.txt")
 
     if login_state == -1 and internet_state == -1:
-        logger.warning(
-            "Please make sure your terminal connection is established.")
+        logger.warning("Please make sure your terminal connection is established.")
         return False  # 无法验证是否成功登陆，因此返回 Flase
     elif login_state == -1 and internet_state >= 0:
         logger.info("Already login.")
         if global_login_state == -1:
             logger.warning("Could not reach google.com")
         else:
-            logger.info(
-                "Congratulations! You have successfully reached real internet."
-            )
+            logger.info("Congratulations! You have successfully reached real internet.")
         return True
-    elif login_state == 0:
+    elif login_state >= 0:
         logger.info("Not logged in.")
         return False
     else:
@@ -295,12 +295,7 @@ def login_once(username, password, logger):
 
 def auto_login(username, password, logger, heartbeat):
     while True:
-        logger.info('Checking gw.buaa.edu.cn portal login state...')
-        if not check_is_login(logger=logger):
-            logger.info(
-                f"Not logged in, starting auto login with user {username} ...")
-            login_msg = login(username, password, retry=3)
-            logger.info(login_msg)
+        login_once(username, password, logger)
 
         # 计算下一次检查的时间
         next_check_time = datetime.now() + timedelta(seconds=int(heartbeat))
