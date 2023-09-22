@@ -293,7 +293,7 @@ def login_once(username, password, logger):
         logger.info(login_msg)
 
 
-def auto_login(username, password, logger):
+def auto_login(username, password, logger, heartbeat):
     while True:
         logger.info('Checking gw.buaa.edu.cn portal login state...')
         if not check_is_login(logger=logger):
@@ -303,7 +303,7 @@ def auto_login(username, password, logger):
             logger.info(login_msg)
 
         # 计算下一次检查的时间
-        next_check_time = datetime.now() + timedelta(minutes=30)
+        next_check_time = datetime.now() + timedelta(seconds=int(heartbeat))
         logger.info(f"Next check will be at: {next_check_time}")
 
         # 等待到达下一次检查时间

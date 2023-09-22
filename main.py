@@ -20,6 +20,10 @@ def get_args(logger):
     parser.add_argument("--auto-login",
                         help="auto login every 30 minutes",
                         action="store_true")
+    parser.add_argument("-hb",
+                        "--heartbeat",
+                        help="check out heartbeat, default 60*30s",
+                        default=1800)
     args = parser.parse_args()
     logger.info(f"config: {args.config}")
     return args
@@ -44,7 +48,7 @@ def main():
     args = get_args(logger)
     user, pwd = get_user(args.config, logger)
     if args.auto_login:
-        auto_login(user, pwd, logger)
+        auto_login(user, pwd, logger, args.heartbeat)
     else:
         login_once(user, pwd, logger)
 
